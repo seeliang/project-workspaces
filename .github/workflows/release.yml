@@ -31,7 +31,7 @@ jobs:
       - name: Config npm
         run: |
           touch .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.PAT_GITHUB }}" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
           echo "@seeliang:registry=https://npm.pkg.github.com" >> .npmrc
 
       - name: Run tests
@@ -63,7 +63,7 @@ jobs:
           cat ~/.npmrc || echo "not found"
           npx lerna publish from-package --yes --no-verify-access --no-push --registry https://npm.pkg.github.com/
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PAT_GITHUB }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish prerelease for non-default branches
         if: github.ref_name != 'main' && github.ref_name != 'master'
@@ -77,4 +77,4 @@ jobs:
           npx lerna version prerelease --preid=${BRANCH_NAME}-${GIT_SHA} --yes --no-push
           npx lerna publish from-package --yes --no-verify-access --canary --no-git-tag-version --no-push --registry https://npm.pkg.github.com/
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PAT_GITHUB }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
