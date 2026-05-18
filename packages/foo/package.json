@@ -1,5 +1,5 @@
 {
-  "name": "@seeliang/foo",
+  "name": "@seeliang/project-lerna-foo",
   "version": "1.0.21",
   "description": "testing lerna",
   "author": "sliang <hi@sihuiliang.com>",

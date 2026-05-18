@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  publish-gpr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com/
+
+      - name: Config npm
+        run: |
+          touch .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.PAT_GITHUB }}" >> .npmrc
+          echo "@seeliang:registry=https://npm.pkg.github.com" >> .npmrc
+
+      - name: Run tests
+        run: |
+          echo "=== /home/runner/work/_temp/.npmrc ==="
+          cat .npmrc || echo "not found"
+          echo "=== ~/.npmrc ==="
+          cat ~/.npmrc || echo "not found"
+          rm -rf yarn.lock
+          yarn
+          yarn test
+          git stash -u
+
+      - name: Set git identity
+        run: |
+          AUTHOR_EMAIL=$(git log -1 --pretty=format:%ae || echo "")
+          if [ -z "$AUTHOR_EMAIL" ]; then
+            AUTHOR_EMAIL="${GITHUB_ACTOR}@users.noreply.github.com"
+          fi
+          git config --local user.email "$AUTHOR_EMAIL"
+          git config --local user.name "${GITHUB_ACTOR}"
+
+      - name: Publish packages
+        if: github.ref_name == 'main' || github.ref_name == 'master'
+        run: |
+          echo "=== /home/runner/work/_temp/.npmrc ==="
+          cat .npmrc || echo "not found"
+          echo "=== ~/.npmrc ==="
+          cat ~/.npmrc || echo "not found"
+          npx lerna publish from-package --yes --no-verify-access --no-push --registry https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PAT_GITHUB }}
+
+      - name: Publish prerelease for non-default branches
+        if: github.ref_name != 'main' && github.ref_name != 'master'
+        run: |
+          BRANCH_NAME=${{ github.event.pull_request.head.ref || github.ref_name }}
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "=== /home/runner/work/_temp/.npmrc ==="
+          cat .npmrc || echo "not found"
+          echo "=== ~/.npmrc ==="
+          cat ~/.npmrc || echo "not found"
+          npx lerna version prerelease --preid=${BRANCH_NAME}-${GIT_SHA} --yes --no-push
+          npx lerna publish from-package --yes --no-verify-access --canary --no-git-tag-version --no-push --registry https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PAT_GITHUB }}
